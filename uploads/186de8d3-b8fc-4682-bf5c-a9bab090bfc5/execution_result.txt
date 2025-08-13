@@ -1,0 +1,595 @@
+
+[2025-08-13 21:12:57]
+📜 Executing Code:
+import pandas as pd
+import os
+import io
+
+# Create the output directory if it doesn't exist
+output_dir = "uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5"
+os.makedirs(output_dir, exist_ok=True)
+
+# S3 path for the parquet data
+s3_path = "s3://indian-high-court-judgments/metadata/parquet/year=*/court=*/bench=*/metadata.parquet"
+s3_region = "ap-south-1"
+
+# Columns needed for the questions
+columns_to_load = [
+    "court",
+    "year",
+    "disposal_nature",
+    "date_of_registration",
+    "decision_date",
+]
+
+# Load data directly from S3 using pandas and s3fs (pyarrow backend)
+df = pd.read_parquet(
+    s3_path,
+    columns=columns_to_load,
+    storage_options={"client_kwargs": {"region_name": s3_region}},
+)
+
+# Convert date columns to datetime objects for potential future calculations
+df["date_of_registration"] = pd.to_datetime(
+    df["date_of_registration"], errors="coerce", format="%d-%m-%Y"
+)
+df["decision_date"] = pd.to_datetime(df["decision_date"], errors="coerce")
+
+# Save the collected data to a CSV file
+output_csv_path = os.path.join(output_dir, "data.csv")
+df.to_csv(output_csv_path, index=False)
+
+# Collect metadata about the DataFrame
+metadata_path = os.path.join(output_dir, "metadata.txt")
+
+with open(metadata_path, "w") as f:
+    f.write("--- DataFrame Info ---\n")
+    # Redirect df.info() output to a string buffer
+    buf = io.StringIO()
+    df.info(buf=buf)
+    f.write(buf.getvalue())
+    f.write("\n\n--- DataFrame Columns ---\n")
+    f.write(str(df.columns.tolist()))
+    f.write("\n\n--- DataFrame Head ---\n")
+    f.write(df.head().to_string())
+    f.write("\n\n--- Description of data.csv ---\n")
+    f.write(
+        f"This CSV file contains selected metadata for Indian High Court judgments, scraped from the S3 bucket '{s3_path}' for all available years and courts. It includes columns 'court', 'year', 'disposal_nature', 'date_of_registration', and 'decision_date' which are necessary to answer the user's questions. Dates have been converted to datetime objects.\n"
+    )
+    f.write("\n\n--- JSON Answer Format ---\n")
+    f.write(
+        """{\n  \"Which high court disposed the most cases from 2019 - 2022?\": \"...\",\n  \"What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?\": \"...\",\n  \"Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters\": \"data:image/webp:base64,...\"\n}"""
+    )
+
+----------------------------------------
+
+[2025-08-13 21:12:59]
+❌ Error during code execution:
+Traceback (most recent call last):
+  File "/home/madhan/TDS_project2/task_engine.py", line 48, in run_python_code
+    execute_code()
+    ~~~~~~~~~~~~^^
+  File "/home/madhan/TDS_project2/task_engine.py", line 26, in execute_code
+    exec(code, exec_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 17, in <module>
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+           ~~~~~~~~~^
+        path,
+        ^^^^^
+    ...<6 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 265, in read
+    pa_table = self.api.parquet.read_table(
+        path_or_handle,
+    ...<3 lines>...
+        **kwargs,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1843, in read_table
+    dataset = ParquetDataset(
+        source,
+    ...<16 lines>...
+        arrow_extensions_enabled=arrow_extensions_enabled,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1401, in __init__
+    finfo = filesystem.get_file_info(path_or_paths)
+  File "pyarrow/_fs.pyx", line 615, in pyarrow._fs.FileSystem.get_file_info
+  File "pyarrow/error.pxi", line 155, in pyarrow.lib.pyarrow_internal_check_status
+  File "pyarrow/error.pxi", line 89, in pyarrow.lib.check_status
+  File "pyarrow/_fs.pyx", line 1522, in pyarrow._fs._cb_get_file_info
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/fs.py", line 319, in get_file_info
+    info = self.fs.info(path)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 118, in wrapper
+    return sync(self.loop, func, *args, **kwargs)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 103, in sync
+    raise return_result
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 56, in _runner
+    result[0] = await coro
+                ^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 1445, in _info
+    out = await self._call_s3(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 371, in _call_s3
+    return await _error_wrapper(
+           ^^^^^^^^^^^^^^^^^^^^^
+        method, kwargs=additional_kwargs, retries=self.retries
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 146, in _error_wrapper
+    raise err
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 114, in _error_wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/context.py", line 36, in wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 406, in _make_api_call
+    http, parsed_response = await self._make_request(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict, request_context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 432, in _make_request
+    return await self._endpoint.make_request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 116, in _send_request
+    request = await self.create_request(request_dict, operation_model)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 104, in create_request
+    await self._event_emitter.emit(
+    ...<3 lines>...
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/hooks.py", line 68, in _emit
+    response = await resolve_awaitable(handler(**kwargs))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/_helpers.py", line 6, in resolve_awaitable
+    return await obj
+           ^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 25, in handler
+    return await self.sign(operation_name, request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 91, in sign
+    auth.add_auth(request)
+    ~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/botocore/auth.py", line 421, in add_auth
+    raise NoCredentialsError()
+botocore.exceptions.NoCredentialsError: Unable to locate credentials
+
+----------------------------------------
+
+[2025-08-13 21:13:48]
+📜 Executing Code:
+import pandas as pd
+import s3fs
+import os
+
+output_dir = "uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5"
+output_csv_path = os.path.join(output_dir, "data.csv")
+metadata_file_path = os.path.join(output_dir, "metadata.txt")
+
+os.makedirs(output_dir, exist_ok=True)
+
+s3_base_path = "s3://indian-high-court-judgments/metadata/parquet/"
+
+columns_to_load = ["court", "decision_date", "date_of_registration", "year"]
+
+filter_q1 = [("year", ">=", 2019), ("year", "<=", 2022)]
+filter_q2 = [("court", "==", "33_10")]
+
+combined_filters = [filter_q1, filter_q2]
+
+df = pd.read_parquet(
+    s3_base_path,
+    storage_options={"anon": False},
+    columns=columns_to_load,
+    engine="pyarrow",
+    filters=combined_filters,
+)
+
+df["date_of_registration"] = pd.to_datetime(
+    df["date_of_registration"], format="%d-%m-%Y", errors="coerce"
+)
+df["decision_date"] = pd.to_datetime(df["decision_date"], errors="coerce")
+
+df.to_csv(output_csv_path, index=False)
+
+with open(metadata_file_path, "w") as f:
+    f.write("-- Data Collection Metadata ---\n")
+    f.write(f"Source: S3 bucket: {s3_base_path} with filters for relevant data.\n")
+    f.write(f"Number of rows collected: {df.shape[0]}\n")
+    f.write(f"Number of columns collected: {df.shape[1]}\n")
+    f.write("\n--- DataFrame Info ---\n")
+    df.info(buf=f)
+    f.write("\n--- DataFrame Columns ---\n")
+    f.write(str(df.columns.tolist()) + "\n")
+    f.write("\n--- DataFrame Head ---\n")
+    f.write(df.head().to_string() + "\n")
+    f.write("\n--- JSON Answer Format ---\n")
+    f.write("{\n")
+    f.write('  "Which high court disposed the most cases from 2019 - 2022?": "...",\n')
+    f.write(
+        '  "What\'s the regression slope of the date_of_registration - decision_date by year in the court=33_10?": "...",\n'
+    )
+    f.write(
+        '  "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters": "data:image/webp:base64,..."\n'
+    )
+    f.write("}\n")
+
+----------------------------------------
+
+[2025-08-13 21:13:50]
+❌ Error during code execution:
+Traceback (most recent call last):
+  File "/home/madhan/TDS_project2/task_engine.py", line 48, in run_python_code
+    execute_code()
+    ~~~~~~~~~~~~^^
+  File "/home/madhan/TDS_project2/task_engine.py", line 26, in execute_code
+    exec(code, exec_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 20, in <module>
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+           ~~~~~~~~~^
+        path,
+        ^^^^^
+    ...<6 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 265, in read
+    pa_table = self.api.parquet.read_table(
+        path_or_handle,
+    ...<3 lines>...
+        **kwargs,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1843, in read_table
+    dataset = ParquetDataset(
+        source,
+    ...<16 lines>...
+        arrow_extensions_enabled=arrow_extensions_enabled,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1401, in __init__
+    finfo = filesystem.get_file_info(path_or_paths)
+  File "pyarrow/_fs.pyx", line 615, in pyarrow._fs.FileSystem.get_file_info
+  File "pyarrow/error.pxi", line 155, in pyarrow.lib.pyarrow_internal_check_status
+  File "pyarrow/error.pxi", line 89, in pyarrow.lib.check_status
+  File "pyarrow/_fs.pyx", line 1522, in pyarrow._fs._cb_get_file_info
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/fs.py", line 319, in get_file_info
+    info = self.fs.info(path)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 118, in wrapper
+    return sync(self.loop, func, *args, **kwargs)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 103, in sync
+    raise return_result
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 56, in _runner
+    result[0] = await coro
+                ^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 1445, in _info
+    out = await self._call_s3(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 371, in _call_s3
+    return await _error_wrapper(
+           ^^^^^^^^^^^^^^^^^^^^^
+        method, kwargs=additional_kwargs, retries=self.retries
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 146, in _error_wrapper
+    raise err
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 114, in _error_wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/context.py", line 36, in wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 406, in _make_api_call
+    http, parsed_response = await self._make_request(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict, request_context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 432, in _make_request
+    return await self._endpoint.make_request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 116, in _send_request
+    request = await self.create_request(request_dict, operation_model)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 104, in create_request
+    await self._event_emitter.emit(
+    ...<3 lines>...
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/hooks.py", line 68, in _emit
+    response = await resolve_awaitable(handler(**kwargs))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/_helpers.py", line 6, in resolve_awaitable
+    return await obj
+           ^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 25, in handler
+    return await self.sign(operation_name, request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 91, in sign
+    auth.add_auth(request)
+    ~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/botocore/auth.py", line 421, in add_auth
+    raise NoCredentialsError()
+botocore.exceptions.NoCredentialsError: Unable to locate credentials
+
+----------------------------------------
+
+[2025-08-13 21:14:21]
+📜 Executing Code:
+import pandas as pd
+import s3fs
+import os
+
+output_dir = "uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5"
+output_csv_path = os.path.join(output_dir, "data.csv")
+metadata_file_path = os.path.join(output_dir, "metadata.txt")
+
+os.makedirs(output_dir, exist_ok=True)
+
+s3_base_path = "s3://indian-high-court-judgments/metadata/parquet/"
+
+columns_to_load = ["court", "decision_date", "date_of_registration", "year"]
+
+filter_q1 = [("year", ">=", 2019), ("year", "<=", 2022)]
+filter_q2 = [("court", "==", "33_10")]
+
+combined_filters = [filter_q1, filter_q2]
+
+df = pd.read_parquet(
+    s3_base_path,
+    storage_options={"anon": False},
+    columns=columns_to_load,
+    engine="pyarrow",
+    filters=combined_filters,
+)
+
+df["date_of_registration"] = pd.to_datetime(
+    df["date_of_registration"], format="%d-%m-%Y", errors="coerce"
+)
+df["decision_date"] = pd.to_datetime(df["decision_date"], errors="coerce")
+
+df.to_csv(output_csv_path, index=False)
+
+with open(metadata_file_path, "w") as f:
+    f.write("-- Data Collection Metadata ---\n")
+    f.write(f"Source: S3 bucket: {s3_base_path} with filters for relevant data.\n")
+    f.write(f"Number of rows collected: {df.shape[0]}\n")
+    f.write(f"Number of columns collected: {df.shape[1]}\n")
+    f.write("\n--- DataFrame Info ---\n")
+    df.info(buf=f)
+    f.write("\n--- DataFrame Columns ---\n")
+    f.write(str(df.columns.tolist()) + "\n")
+    f.write("\n--- DataFrame Head ---\n")
+    f.write(df.head().to_string() + "\n")
+    f.write("\n--- JSON Answer Format ---\n")
+    f.write("{\n")
+    f.write('  "Which high court disposed the most cases from 2019 - 2022?": "...",\n')
+    f.write(
+        '  "What\'s the regression slope of the date_of_registration - decision_date by year in the court=33_10?": "...",\n'
+    )
+    f.write(
+        '  "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters": "data:image/webp:base64,..."\n'
+    )
+    f.write("}\n")
+
+----------------------------------------
+
+[2025-08-13 21:14:21]
+❌ Error during code execution:
+Traceback (most recent call last):
+  File "/home/madhan/TDS_project2/task_engine.py", line 48, in run_python_code
+    execute_code()
+    ~~~~~~~~~~~~^^
+  File "/home/madhan/TDS_project2/task_engine.py", line 26, in execute_code
+    exec(code, exec_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 20, in <module>
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+           ~~~~~~~~~^
+        path,
+        ^^^^^
+    ...<6 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 265, in read
+    pa_table = self.api.parquet.read_table(
+        path_or_handle,
+    ...<3 lines>...
+        **kwargs,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1843, in read_table
+    dataset = ParquetDataset(
+        source,
+    ...<16 lines>...
+        arrow_extensions_enabled=arrow_extensions_enabled,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1401, in __init__
+    finfo = filesystem.get_file_info(path_or_paths)
+  File "pyarrow/_fs.pyx", line 615, in pyarrow._fs.FileSystem.get_file_info
+  File "pyarrow/error.pxi", line 155, in pyarrow.lib.pyarrow_internal_check_status
+  File "pyarrow/error.pxi", line 89, in pyarrow.lib.check_status
+  File "pyarrow/_fs.pyx", line 1522, in pyarrow._fs._cb_get_file_info
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/fs.py", line 319, in get_file_info
+    info = self.fs.info(path)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 118, in wrapper
+    return sync(self.loop, func, *args, **kwargs)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 103, in sync
+    raise return_result
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/fsspec/asyn.py", line 56, in _runner
+    result[0] = await coro
+                ^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 1445, in _info
+    out = await self._call_s3(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 371, in _call_s3
+    return await _error_wrapper(
+           ^^^^^^^^^^^^^^^^^^^^^
+        method, kwargs=additional_kwargs, retries=self.retries
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 146, in _error_wrapper
+    raise err
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/s3fs/core.py", line 114, in _error_wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/context.py", line 36, in wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 406, in _make_api_call
+    http, parsed_response = await self._make_request(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict, request_context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/client.py", line 432, in _make_request
+    return await self._endpoint.make_request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        operation_model, request_dict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 116, in _send_request
+    request = await self.create_request(request_dict, operation_model)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/endpoint.py", line 104, in create_request
+    await self._event_emitter.emit(
+    ...<3 lines>...
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/hooks.py", line 68, in _emit
+    response = await resolve_awaitable(handler(**kwargs))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/_helpers.py", line 6, in resolve_awaitable
+    return await obj
+           ^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 25, in handler
+    return await self.sign(operation_name, request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/aiobotocore/signers.py", line 91, in sign
+    auth.add_auth(request)
+    ~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/botocore/auth.py", line 421, in add_auth
+    raise NoCredentialsError()
+botocore.exceptions.NoCredentialsError: Unable to locate credentials
+
+----------------------------------------
+
+[2025-08-13 21:14:41]
+📜 Executing Code:
+import pandas as pd
+import os
+import io
+
+# Define the output directory
+output_dir = "uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5"
+os.makedirs(output_dir, exist_ok=True)
+
+# S3 path for the parquet files
+s3_path = "s3://indian-high-court-judgments/metadata/parquet/year=*/court=*/bench=*/metadata.parquet"
+
+# Read the parquet files from S3
+df = pd.read_parquet(s3_path)
+
+# Save the collected data to a CSV file
+csv_file_path = os.path.join(output_dir, "data.csv")
+df.to_csv(csv_file_path, index=False)
+
+# Collect metadata about the DataFrame
+metadata_file_path = os.path.join(output_dir, "metadata.txt")
+with open(metadata_file_path, "w") as f:
+    f.write("--- DataFrame Info ---\n")
+    buffer = io.StringIO()
+    df.info(buf=buffer)
+    f.write(buffer.getvalue())
+    f.write("\n\n--- DataFrame Columns ---\n")
+    f.write(str(df.columns.tolist()))
+    f.write("\n\n--- DataFrame Head ---\n")
+    f.write(df.head().to_string())
+    f.write("\n\n--- JSON Answer Format ---\n")
+    f.write(
+        """{\n  "Which high court disposed the most cases from 2019 - 2022?": "...",\n  "What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?": "...",\n  "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters": "data:image/webp:base64,..."\n}"""
+    )
+
+----------------------------------------
+
+[2025-08-13 21:14:59]
+❌ Error during code execution:
+Traceback (most recent call last):
+  File "/home/madhan/TDS_project2/task_engine.py", line 48, in run_python_code
+    execute_code()
+    ~~~~~~~~~~~~^^
+  File "/home/madhan/TDS_project2/task_engine.py", line 26, in execute_code
+    exec(code, exec_globals)
+    ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 13, in <module>
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+           ~~~~~~~~~^
+        path,
+        ^^^^^
+    ...<6 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pandas/io/parquet.py", line 265, in read
+    pa_table = self.api.parquet.read_table(
+        path_or_handle,
+    ...<3 lines>...
+        **kwargs,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1843, in read_table
+    dataset = ParquetDataset(
+        source,
+    ...<16 lines>...
+        arrow_extensions_enabled=arrow_extensions_enabled,
+    )
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/parquet/core.py", line 1424, in __init__
+    self._dataset = ds.dataset(path_or_paths, filesystem=filesystem,
+                    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                               schema=schema, format=parquet_format,
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                               partitioning=partitioning,
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                               ignore_prefixes=ignore_prefixes)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/dataset.py", line 790, in dataset
+    return _filesystem_dataset(source, **kwargs)
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/dataset.py", line 472, in _filesystem_dataset
+    fs, paths_or_selector = _ensure_single_source(source, filesystem)
+                            ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/madhan/TDS_project2/venv/lib/python3.13/site-packages/pyarrow/dataset.py", line 437, in _ensure_single_source
+    raise FileNotFoundError(path)
+FileNotFoundError: indian-high-court-judgments/metadata/parquet/year=*/court=*/bench=*/metadata.parquet
+
+----------------------------------------

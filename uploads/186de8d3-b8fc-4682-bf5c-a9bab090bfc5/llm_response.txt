@@ -1,0 +1,39 @@
+{
+    "code": "import pandas as pd\nimport os\nimport io\n\n# Create the output directory if it doesn't exist\noutput_dir = \"uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5\"\nos.makedirs(output_dir, exist_ok=True)\n\n# S3 path for the parquet data\ns3_path = \"s3://indian-high-court-judgments/metadata/parquet/year=*/court=*/bench=*/metadata.parquet\"\ns3_region = \"ap-south-1\"\n\n# Columns needed for the questions\ncolumns_to_load = ['court', 'year', 'disposal_nature', 'date_of_registration', 'decision_date']\n\n# Load data directly from S3 using pandas and s3fs (pyarrow backend)\ndf = pd.read_parquet(\n    s3_path,\n    columns=columns_to_load,\n    storage_options={'client_kwargs': {'region_name': s3_region}}\n)\n\n# Convert date columns to datetime objects for potential future calculations\ndf['date_of_registration'] = pd.to_datetime(df['date_of_registration'], errors='coerce', format='%d-%m-%Y')\ndf['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')\n\n# Save the collected data to a CSV file\noutput_csv_path = os.path.join(output_dir, \"data.csv\")\ndf.to_csv(output_csv_path, index=False)\n\n# Collect metadata about the DataFrame\nmetadata_path = os.path.join(output_dir, \"metadata.txt\")\n\nwith open(metadata_path, 'w') as f:\n    f.write(\"--- DataFrame Info ---\\n\")\n    # Redirect df.info() output to a string buffer\n    buf = io.StringIO()\n    df.info(buf=buf)\n    f.write(buf.getvalue())\n    f.write(\"\\n\\n--- DataFrame Columns ---\\n\")\n    f.write(str(df.columns.tolist()))\n    f.write(\"\\n\\n--- DataFrame Head ---\\n\")\n    f.write(df.head().to_string())\n    f.write(\"\\n\\n--- Description of data.csv ---\\n\")\n    f.write(f\"This CSV file contains selected metadata for Indian High Court judgments, scraped from the S3 bucket '{s3_path}' for all available years and courts. It includes columns 'court', 'year', 'disposal_nature', 'date_of_registration', and 'decision_date' which are necessary to answer the user's questions. Dates have been converted to datetime objects.\\n\")\n    f.write(\"\\n\\n--- JSON Answer Format ---\\n\")\n    f.write(\"\"\"{\\n  \\\"Which high court disposed the most cases from 2019 - 2022?\\\": \\\"...\\\",\\n  \\\"What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?\\\": \\\"...\\\",\\n  \\\"Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters\\\": \\\"data:image/webp:base64,...\\\"\\n}\"\"\")\n",
+    "libraries": [
+        "pandas",
+        "s3fs",
+        "pyarrow"
+    ],
+    "questions": [
+        "Which high court disposed the most cases from 2019 - 2022?",
+        "What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?",
+        "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters"
+    ],
+    "comment": "Step-3: Getting scrap code and metadata from llm. Tries count = %d 0"
+}{
+    "code": "import pandas as pd\nimport s3fs\nimport os\n\noutput_dir = 'uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5'\noutput_csv_path = os.path.join(output_dir, 'data.csv')\nmetadata_file_path = os.path.join(output_dir, 'metadata.txt')\n\nos.makedirs(output_dir, exist_ok=True)\n\ns3_base_path = 's3://indian-high-court-judgments/metadata/parquet/'\n\ncolumns_to_load = ['court', 'decision_date', 'date_of_registration', 'year']\n\nfilter_q1 = [('year', '>=', 2019), ('year', '<=', 2022)]\nfilter_q2 = [('court', '==', '33_10')]\n\ncombined_filters = [filter_q1, filter_q2]\n\ndf = pd.read_parquet(\n    s3_base_path,\n    storage_options={'anon': False},\n    columns=columns_to_load,\n    engine='pyarrow',\n    filters=combined_filters\n)\n\ndf['date_of_registration'] = pd.to_datetime(df['date_of_registration'], format='%d-%m-%Y', errors='coerce')\ndf['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')\n\ndf.to_csv(output_csv_path, index=False)\n\nwith open(metadata_file_path, 'w') as f:\n    f.write(\"-- Data Collection Metadata ---\\n\")\n    f.write(f\"Source: S3 bucket: {s3_base_path} with filters for relevant data.\\n\")\n    f.write(f\"Number of rows collected: {df.shape[0]}\\n\")\n    f.write(f\"Number of columns collected: {df.shape[1]}\\n\")\n    f.write(\"\\n--- DataFrame Info ---\\n\")\n    df.info(buf=f)\n    f.write(\"\\n--- DataFrame Columns ---\\n\")\n    f.write(str(df.columns.tolist()) + \"\\n\")\n    f.write(\"\\n--- DataFrame Head ---\\n\")\n    f.write(df.head().to_string() + \"\\n\")\n    f.write(\"\\n--- JSON Answer Format ---\\n\")\n    f.write(\"{\\n\")\n    f.write(\"  \\\"Which high court disposed the most cases from 2019 - 2022?\\\": \\\"...\\\",\\n\")\n    f.write(\"  \\\"What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?\\\": \\\"...\\\",\\n\")\n    f.write(\"  \\\"Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters\\\": \\\"data:image/webp:base64,...\\\"\\n\")\n    f.write(\"}\\n\")",
+    "libraries": [
+        "pandas",
+        "s3fs",
+        "pyarrow"
+    ],
+    "questions": [
+        "Which high court disposed the most cases from 2019 - 2022?",
+        "What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?",
+        "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters"
+    ],
+    "comment": "Step-4: Error occured while scrapping. Tries count = %d, 0"
+}{
+    "code": "import pandas as pd\nimport os\nimport io\n\n# Define the output directory\noutput_dir = \"uploads/186de8d3-b8fc-4682-bf5c-a9bab090bfc5\"\nos.makedirs(output_dir, exist_ok=True)\n\n# S3 path for the parquet files\ns3_path = \"s3://indian-high-court-judgments/metadata/parquet/year=*/court=*/bench=*/metadata.parquet\"\n\n# Read the parquet files from S3\ndf = pd.read_parquet(s3_path)\n\n# Save the collected data to a CSV file\ncsv_file_path = os.path.join(output_dir, \"data.csv\")\ndf.to_csv(csv_file_path, index=False)\n\n# Collect metadata about the DataFrame\nmetadata_file_path = os.path.join(output_dir, \"metadata.txt\")\nwith open(metadata_file_path, \"w\") as f:\n    f.write(\"--- DataFrame Info ---\\n\")\n    buffer = io.StringIO()\n    df.info(buf=buffer)\n    f.write(buffer.getvalue())\n    f.write(\"\\n\\n--- DataFrame Columns ---\\n\")\n    f.write(str(df.columns.tolist()))\n    f.write(\"\\n\\n--- DataFrame Head ---\\n\")\n    f.write(df.head().to_string())\n    f.write(\"\\n\\n--- JSON Answer Format ---\\n\")\n    f.write('''{\\n  \"Which high court disposed the most cases from 2019 - 2022?\": \"...\",\\n  \"What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?\": \"...\",\\n  \"Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters\": \"data:image/webp:base64,...\"\\n}''')\n",
+    "libraries": [
+        "pandas",
+        "s3fs"
+    ],
+    "questions": [
+        "Which high court disposed the most cases from 2019 - 2022?",
+        "What's the regression slope of the date_of_registration - decision_date by year in the court=33_10?",
+        "Plot the year and # of days of delay from the above question as a scatterplot with a regression line. Encode as a base64 data URI under 100,000 characters"
+    ],
+    "comment": "Step-4: Error occured while scrapping. Tries count = %d, 2"
+}
